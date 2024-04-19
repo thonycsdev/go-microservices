@@ -1,0 +1,42 @@
+services:
+  database:
+    image: postgres:16
+    container_name: local_database
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: local_user
+      POSTGRES_PASSWORD: local_password
+      POSTGRES_DB: local_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - local_db_data:/var/lib/postgresql/data
+
+  rabbitMQ:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq_local
+    restart: unless-stopped
+    networks: 
+      - my-network
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics check_port_connectivity
+      interval: 20s
+      timeout: 10s
+      retries: 5
+  consumer:
+    build: ./go-logs-consumer/
+    networks: 
+      - my-network
+    depends_on:
+      rabbitMQ:
+        condition: service_healthy
+
+volumes:
+  local_db_data:
+    
+networks:
+  my-network:
+    driver: bridge
